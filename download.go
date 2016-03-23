@@ -7,8 +7,10 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/reusee/vviccommon"
 
 	"net/http"
 	"os"
@@ -59,23 +61,27 @@ func main() {
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	ce(err, "decode")
 
-	dirName := fmt.Sprintf("id-%s", os.Args[1])
+	dirName := fmt.Sprintf("%s-%s", time.Now().Format("2006-01-02-15-04-05"), os.Args[1])
 	os.Mkdir(dirName, 0755)
 
 	for i, imgPath := range strings.Split(data.Data.Imgs, ",") {
+		// get image path
 		if !strings.HasPrefix(imgPath, "http:") {
 			imgPath = "http:" + imgPath
 		}
 		pt("%s\n", imgPath)
-		fileName := filepath.Join(dirName, string([]byte{'a' + byte(i)})+
-			path.Ext(imgPath))
+		// get image
 		resp, err := http.Get(imgPath)
 		ce(err, "get image")
 		defer resp.Body.Close()
+		// write to file
+		fileName := filepath.Join(dirName, "foo-"+string([]byte{'a' + byte(i)})+
+			path.Ext(imgPath))
 		out, err := os.Create(fileName)
 		ce(err, "create file")
 		defer out.Close()
-		io.Copy(out, resp.Body)
+		//io.Copy(out, resp.Body)
+		ce(vviccommon.CompositeLogo(resp.Body, out), "composite logo")
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(data.Data.Desc))
@@ -83,7 +89,61 @@ func main() {
 	doc.Find("img").Each(func(i int, se *goquery.Selection) {
 		imgSrc, _ := se.Attr("src")
 		pt("%s\n", imgSrc)
+		fileName := filepath.Join(dirName, fmt.Sprintf("bar-%03d%s", i, path.Ext(imgSrc)))
+		resp, err := http.Get(imgSrc)
+		ce(err, "get image")
+		defer resp.Body.Close()
+		out, err := os.Create(fileName)
+		ce(err, "create file")
+		defer out.Close()
+		io.Copy(out, resp.Body)
 	})
+
+	pt("\n")
+	pt("梦丹铃 2016春%s\n", vviccommon.TidyTitle(data.Data.Title))
+	pt("%s\n", data.Data.Discount_price)
+	pt("%d\n", data.Data.Id)
+	pt("\n")
+
+	attrs := map[string]string{}
+	for _, attr := range strings.Split(data.Data.Attrs, ",") {
+		parts := strings.SplitN(attr, ":", 2)
+		attrs[parts[0]] = parts[1]
+	}
+	attrKeys := []string{
+		"风格",
+		"裙长",
+		"版型",
+		"领型",
+		"袖型",
+		"元素",
+		"颜色",
+		"尺码",
+		"图案",
+		"适用",
+		"组合",
+		"款式",
+		"袖长",
+		"腰型",
+		"门襟",
+		"裙型",
+		"质地",
+	}
+loop_key:
+	for _, key := range attrKeys {
+		for attrKey, attr := range attrs {
+			if strings.Contains(attrKey, key) {
+				pt("%-20s%s\n", attrKey, attr)
+				delete(attrs, attrKey)
+				continue loop_key
+			}
+		}
+	}
+	pt("\n")
+	for attrKey, attr := range attrs {
+		pt("%-20s%s\n", attrKey, attr)
+	}
+
 }
 
 type Err struct {
