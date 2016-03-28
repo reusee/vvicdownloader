@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,6 +77,9 @@ func main() {
 		// write to file
 		fileName := filepath.Join(dirName, "foo-"+string([]byte{'a' + byte(i)})+
 			path.Ext(imgPath))
+		if !strings.HasSuffix(fileName, ".jpg") {
+			fileName = fileName + ".jpg"
+		}
 		out, err := os.Create(fileName)
 		ce(err, "create file")
 		defer out.Close()
@@ -89,6 +92,9 @@ func main() {
 	doc.Find("img").Each(func(i int, se *goquery.Selection) {
 		imgSrc, _ := se.Attr("src")
 		pt("%s\n", imgSrc)
+		if !strings.HasPrefix(imgSrc, "http") {
+			return
+		}
 		fileName := filepath.Join(dirName, fmt.Sprintf("bar-%03d%s", i, path.Ext(imgSrc)))
 		resp, err := http.Get(imgSrc)
 		ce(err, "get image")
@@ -96,12 +102,16 @@ func main() {
 		out, err := os.Create(fileName)
 		ce(err, "create file")
 		defer out.Close()
-		io.Copy(out, resp.Body)
+		ce(vviccommon.CompositeWatermark(resp.Body, out), "composite watermark")
+		//io.Copy(out, resp.Body)
 	})
 
 	pt("\n")
-	pt("梦丹铃 2016春%s\n", vviccommon.TidyTitle(data.Data.Title))
+	pt("梦丹铃 2016%s\n", vviccommon.TidyTitle(data.Data.Title))
 	pt("%s\n", data.Data.Discount_price)
+	price, err := strconv.ParseFloat(data.Data.Discount_price, 64)
+	ce(err, "parse price")
+	pt("%f\n", price+18+(price*0.08)+13+(price*0.002))
 	pt("%d\n", data.Data.Id)
 	pt("\n")
 
