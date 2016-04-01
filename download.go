@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -75,7 +76,7 @@ func main() {
 		ce(err, "get image")
 		defer resp.Body.Close()
 		// write to file
-		fileName := filepath.Join(dirName, "foo-"+string([]byte{'a' + byte(i)})+
+		fileName := filepath.Join(dirName, "j-"+string([]byte{'a' + byte(i)})+
 			path.Ext(imgPath))
 		if !strings.HasSuffix(fileName, ".jpg") {
 			fileName = fileName + ".jpg"
@@ -95,15 +96,15 @@ func main() {
 		if !strings.HasPrefix(imgSrc, "http") {
 			return
 		}
-		fileName := filepath.Join(dirName, fmt.Sprintf("bar-%03d%s", i, path.Ext(imgSrc)))
+		fileName := filepath.Join(dirName, fmt.Sprintf("k-%03d%s", i, path.Ext(imgSrc)))
 		resp, err := http.Get(imgSrc)
 		ce(err, "get image")
 		defer resp.Body.Close()
 		out, err := os.Create(fileName)
 		ce(err, "create file")
 		defer out.Close()
-		ce(vviccommon.CompositeWatermark(resp.Body, out), "composite watermark")
-		//io.Copy(out, resp.Body)
+		//ce(vviccommon.CompositeWatermark(resp.Body, out), "composite watermark")
+		io.Copy(out, resp.Body)
 	})
 
 	pt("\n")
